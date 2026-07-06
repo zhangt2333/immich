@@ -68,10 +68,18 @@ export class TagRepository {
     });
   }
 
+  // START custom shared-tag visibility change: allow callers to request all tags for trusted-family sharing.
   @GenerateSql({ params: [DummyValue.UUID] })
-  getAll(userId: string) {
-    return this.db.selectFrom('tag').select(columns.tag).where('userId', '=', userId).orderBy('value').execute();
+  getAll(userId?: string) {
+    let query = this.db.selectFrom('tag').select(columns.tag);
+
+    if (userId) {
+      query = query.where('userId', '=', userId);
+    }
+
+    return query.orderBy('value').execute();
   }
+  // END custom shared-tag visibility change: all-tag listing support is complete.
 
   @GenerateSql({ params: [{ userId: DummyValue.UUID, color: DummyValue.STRING, value: DummyValue.STRING }] })
   create(tag: Insertable<TagTable>) {

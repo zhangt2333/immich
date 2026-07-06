@@ -22,7 +22,9 @@ import { upsertTags } from 'src/utils/tag';
 @Injectable()
 export class TagService extends BaseService {
   async getAll(auth: AuthDto) {
-    const tags = await this.tagRepository.getAll(auth.user.id);
+    // START custom shared-tag visibility change: expose all tag ids to authenticated trusted-family users.
+    const tags = await this.tagRepository.getAll();
+    // END custom shared-tag visibility change: authenticated users can discover shared tag ids.
     return tags.map((tag) => mapTag(tag));
   }
 

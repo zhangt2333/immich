@@ -74,11 +74,19 @@ export class SearchService extends BaseService {
     }
 
     let userIds: string[] | undefined;
+    // START custom shared-tag search change: track albums visible to the requester for tag-only searches.
+    let visibleAlbumIds: string[] | undefined;
+    // END custom shared-tag search change: visible album scope storage is ready.
 
     if (dto.albumIds && dto.albumIds.length > 0) {
       await this.requireAccess({ auth, ids: dto.albumIds, permission: Permission.AlbumRead });
     } else {
       userIds = await this.getUserIdsToSearch(auth, dto.visibility);
+      // START custom shared-tag search change: global tag searches also include assets in albums visible to this user.
+      if (dto.tagIds && dto.tagIds.length > 0 && dto.visibility !== AssetVisibility.Locked) {
+        visibleAlbumIds = await this.albumRepository.getAllIds(auth.user.id);
+      }
+      // END custom shared-tag search change: visible albums are included for tag-only search.
     }
 
     const page = dto.page ?? 1;
@@ -90,6 +98,9 @@ export class SearchService extends BaseService {
         checksum,
         visibility: dto.visibility ?? (auth.session?.hasElevatedPermission ? undefined : 'not-locked'),
         userIds,
+        // START custom shared-tag search change: pass visible album scope to include shared-album tag matches.
+        visibleAlbumIds,
+        // END custom shared-tag search change: search builder receives shared-album scope.
         orderDirection: dto.order ?? AssetOrder.Desc,
       },
     );

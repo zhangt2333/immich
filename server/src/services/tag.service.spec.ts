@@ -21,11 +21,13 @@ describe(TagService.name, () => {
   });
 
   describe('getAll', () => {
-    it('should return all tags for a user', async () => {
+    // START custom shared-tag visibility change: all authenticated users receive the shared tag catalog.
+    it('should return all tags', async () => {
       mocks.tag.getAll.mockResolvedValue([tagStub.tag]);
       await expect(sut.getAll(authStub.admin)).resolves.toEqual([tagResponseStub.tag1]);
-      expect(mocks.tag.getAll).toHaveBeenCalledWith(authStub.admin.user.id);
+      expect(mocks.tag.getAll).toHaveBeenCalledWith();
     });
+    // END custom shared-tag visibility change: tag listing test expects no owner filter.
   });
 
   describe('get', () => {

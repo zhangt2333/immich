@@ -10,6 +10,9 @@ import {
   Selectable,
   SelectQueryBuilder,
   ShallowDehydrateObject,
+  // START custom shared-tag search change: type OR conditions for visible album search scope.
+  SqlBool,
+  // END custom shared-tag search change: SQL boolean expression typing is available.
   sql,
 } from 'kysely';
 import { PostgresJSDialect } from 'kysely-postgres-js';
@@ -434,7 +437,33 @@ export function searchAssetBuilder(kysely: Kysely<DB>, options: AssetSearchBuild
     .$if(!!options.checksum, (qb) => qb.where('asset.checksum', '=', options.checksum!))
     .$if(!!options.id, (qb) => qb.where('asset.id', '=', asUuid(options.id!)))
     .$if(!!options.libraryId, (qb) => qb.where('asset.libraryId', '=', asUuid(options.libraryId!)))
-    .$if(!!options.userIds, (qb) => qb.where('asset.ownerId', '=', anyUuid(options.userIds!)))
+    // START custom shared-tag search change: use owner scope normally, or owner/visible-album scope for tag searches.
+    .$if(!!options.userIds && !options.visibleAlbumIds?.length, (qb) =>
+      qb.where('asset.ownerId', '=', anyUuid(options.userIds!)),
+    )
+    .$if(!!options.visibleAlbumIds?.length, (qb) =>
+      qb.where((eb) => {
+        const conditions: Expression<SqlBool>[] = [
+          eb.and([
+            eb.exists(
+              eb
+                .selectFrom('album_asset')
+                .select('album_asset.assetId')
+                .whereRef('album_asset.assetId', '=', 'asset.id')
+                .where('album_asset.albumId', '=', anyUuid(options.visibleAlbumIds!)),
+            ),
+            eb('asset.visibility', '!=', AssetVisibility.Locked),
+          ]),
+        ];
+
+        if (options.userIds && options.userIds.length > 0) {
+          conditions.push(eb('asset.ownerId', '=', anyUuid(options.userIds)));
+        }
+
+        return eb.or(conditions);
+      }),
+    )
+    // END custom shared-tag search change: owner/visible-album search scope has been applied.
     .$if(!!options.encodedVideoPath, (qb) =>
       qb
         .innerJoin('asset_file', (join) =>

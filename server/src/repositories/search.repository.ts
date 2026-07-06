@@ -18,6 +18,9 @@ export interface SearchAssetIdOptions {
 export interface SearchUserIdOptions {
   libraryId?: string | null;
   userIds?: string[];
+  // START custom shared-tag search change: carry visible album ids for trusted-family tag search.
+  visibleAlbumIds?: string[];
+  // END custom shared-tag search change: visible album ids are available to the asset search builder.
 }
 
 export type SearchIdOptions = SearchAssetIdOptions & SearchUserIdOptions;
