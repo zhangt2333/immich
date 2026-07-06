@@ -58,8 +58,13 @@ export class TagRepository {
   }
 
   @GenerateSql({ params: [DummyValue.UUID] })
-  getAll(userId: string) {
-    return this.db.selectFrom('tag').select(columns.tag).where('userId', '=', userId).orderBy('value').execute();
+  getAll(userId?: string) {
+    return this.db
+      .selectFrom('tag')
+      .select(columns.tag)
+      .$if(!!userId, (qb) => qb.where('userId', '=', userId!))
+      .orderBy('value')
+      .execute();
   }
 
   @GenerateSql({ params: [{ userId: DummyValue.UUID, color: DummyValue.STRING, value: DummyValue.STRING }] })

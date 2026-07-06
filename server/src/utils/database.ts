@@ -311,6 +311,15 @@ export function inSharedAlbum(userId: string, assetId: 'asset.id' | 'asset_face.
   );
 }
 
+function searchableSharedTagAlbum(userId: string) {
+  const eb = expressionBuilder<DB, 'asset'>();
+  return eb.and([inSharedAlbum(userId, 'asset.id'), eb('asset.visibility', '!=', AssetVisibility.Locked)]);
+}
+
+function includesTags(branch: SearchFilterBranch) {
+  return !!(branch.tagIds?.any?.length || branch.tagIds?.all?.length);
+}
+
 export function inAlbums<O>(qb: SelectQueryBuilder<DB, 'asset', O>, albumIds: string[]) {
   return qb.innerJoin(
     (eb) =>
@@ -500,7 +509,14 @@ export function searchAssetBuilderLegacy(kysely: Kysely<DB>, options: AssetSearc
     .$if(!!options.checksum, (qb) => qb.where('asset.checksum', '=', options.checksum!))
     .$if(!!options.id, (qb) => qb.where('asset.id', '=', asUuid(options.id!)))
     .$if(!!options.libraryId, (qb) => qb.where('asset.libraryId', '=', asUuid(options.libraryId!)))
-    .$if(!!options.userIds, (qb) => qb.where('asset.ownerId', '=', anyUuid(options.userIds!)))
+    .$if(!!options.userIds, (qb) =>
+      qb.where((eb) => {
+        const owned = eb('asset.ownerId', '=', anyUuid(options.userIds!));
+        return options.sharedTagAlbumUserId
+          ? eb.or([owned, searchableSharedTagAlbum(options.sharedTagAlbumUserId)])
+          : owned;
+      }),
+    )
     .$if(!!options.encodedVideoPath, (qb) =>
       qb
         .innerJoin('asset_file', (join) =>
@@ -809,13 +825,21 @@ function branchPredicates(eb: AssetExpressionBuilder, branch: SearchFilterBranch
 export function searchAssetBuilder(kysely: Kysely<DB>, options: AssetSearchBuilderV3Options, scope: AssetSearchScope) {
   const filter = options.filter ?? {};
   const branches = filter.or ?? [];
-  const ownershipPredicate = (eb: AssetExpressionBuilder) => eb('asset.ownerId', '=', anyUuid(scope.userIds));
-  // search universe: own+partner assets unless album-confined, which searches the albums instead;
-  // ownership lands nowhere (top level confined), per unconfined branch, or hoisted globally
+  const includeSharedAlbums = !!scope.sharedTagAlbumUserId && includesTags(filter);
+  const ownershipPredicate = (eb: AssetExpressionBuilder, includeAlbums: boolean) => {
+    const owned = eb('asset.ownerId', '=', anyUuid(scope.userIds));
+    return includeAlbums && scope.sharedTagAlbumUserId
+      ? eb.or([owned, searchableSharedTagAlbum(scope.sharedTagAlbumUserId)])
+      : owned;
+  };
   const topConfined = isAlbumConfined(filter);
-  const anyBranchConfined = branches.some((branch) => isAlbumConfined(branch));
-  const scopePerBranch = !topConfined && anyBranchConfined;
-  const scopeGlobally = !topConfined && !anyBranchConfined;
+  const scopePerBranch =
+    !topConfined &&
+    branches.some(
+      (branch) =>
+        isAlbumConfined(branch) || (!!scope.sharedTagAlbumUserId && !includeSharedAlbums && includesTags(branch)),
+    );
+  const scopeGlobally = !topConfined && !scopePerBranch;
 
   return (
     kysely
@@ -824,7 +848,7 @@ export function searchAssetBuilder(kysely: Kysely<DB>, options: AssetSearchBuild
       // postgres eliminates the left join when no exif column is referenced, so unused joins are free
       .leftJoin('asset_exif', 'asset.id', 'asset_exif.assetId')
       .$if(!!options.withExif, (qb) => qb.select(selectReturnedExifInfo))
-      .$if(scopeGlobally, (qb) => qb.where(ownershipPredicate))
+      .$if(scopeGlobally, (qb) => qb.where((eb) => ownershipPredicate(eb, includeSharedAlbums)))
       .where((eb) =>
         eb.or([eb('asset.visibility', '!=', AssetVisibility.Locked), eb('asset.ownerId', '=', scope.lockedOwnerId)]),
       )
@@ -840,7 +864,9 @@ export function searchAssetBuilder(kysely: Kysely<DB>, options: AssetSearchBuild
               branches.map((branch) =>
                 eb.and([
                   ...branchPredicates(eb, branch),
-                  ...(scopePerBranch && !isAlbumConfined(branch) ? [ownershipPredicate(eb)] : []),
+                  ...(scopePerBranch && !isAlbumConfined(branch)
+                    ? [ownershipPredicate(eb, includeSharedAlbums || includesTags(branch))]
+                    : []),
                 ]),
               ),
             ),

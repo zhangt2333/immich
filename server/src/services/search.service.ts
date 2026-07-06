@@ -87,6 +87,7 @@ export class SearchService extends BaseService {
     }
 
     let userIds: string[] | undefined;
+    let sharedTagAlbumUserId: string | undefined;
 
     if (dto.albumIds && dto.albumIds.length > 0) {
       await this.requireAccess({ auth, ids: dto.albumIds, permission: Permission.AlbumRead });
@@ -94,6 +95,9 @@ export class SearchService extends BaseService {
       throw new BadRequestException('Shared link access is only allowed in combination with an albumIds filter');
     } else {
       userIds = await this.getUserIdsToSearch(auth, dto.visibility);
+      if (dto.tagIds?.length && dto.visibility !== AssetVisibility.Locked) {
+        sharedTagAlbumUserId = auth.user.id;
+      }
     }
 
     const page = dto.page ?? 1;
@@ -106,6 +110,7 @@ export class SearchService extends BaseService {
         visibility: dto.visibility ?? (auth.session?.hasElevatedPermission ? undefined : 'not-locked'),
         userIds,
         viewingUserId: auth.user.id,
+        sharedTagAlbumUserId,
         orderDirection: dto.order ?? AssetOrder.Desc,
       },
     );
@@ -252,7 +257,7 @@ export class SearchService extends BaseService {
         withStacked: dto.withStacked,
         order: dto.orderBy,
       },
-      scope,
+      { ...scope, sharedTagAlbumUserId: auth.sharedLink ? undefined : auth.user.id },
     );
 
     return this.mapResponse(items, { auth }, { nextCursor: hasNextPage ? encodeSearchCursor(offset + size) : null });

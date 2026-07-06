@@ -31,6 +31,7 @@ export interface SearchAssetIdOptions {
 export interface SearchUserIdOptions {
   libraryId?: string | null;
   userIds?: string[];
+  sharedTagAlbumUserId?: string;
 }
 
 export type SearchIdOptions = SearchAssetIdOptions & SearchUserIdOptions;
@@ -140,6 +141,7 @@ export type AssetSearchBuilderOptions = Omit<AssetSearchOptions, 'orderDirection
 export interface AssetSearchScope {
   userIds: string[];
   lockedOwnerId: string;
+  sharedTagAlbumUserId?: string;
   /** whose version of the people to select, required when selecting faces or people */
   viewingUserId?: string;
 }

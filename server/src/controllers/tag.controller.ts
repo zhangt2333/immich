@@ -40,7 +40,7 @@ export class TagController {
     history: new HistoryBuilder().added('v1').beta('v1').stable('v2'),
   })
   getAllTags(@Auth() auth: AuthDto): Promise<TagResponseDto[]> {
-    return this.service.getAll(auth);
+    return this.service.getAll(auth, { includeAll: true });
   }
 
   @Put()
