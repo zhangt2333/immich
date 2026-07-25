@@ -101,9 +101,21 @@ export class AssetMediaController {
     @Auth() auth: AuthDto,
     @Param() { id }: UUIDParamDto,
     @Query() dto: AssetDownloadOriginalDto,
+    // START custom Android video download change: inspect the client platform before selecting download media.
+    @Req() req: Request,
+    // END custom Android video download change: request metadata is available to the download handler.
     @Res() res: Response,
     @Next() next: NextFunction,
   ) {
+    // START custom Android video download change: serve a separately cached representation to Android clients.
+    const isAndroid = req.headers['user-agent']?.toLowerCase().includes('android') ?? false;
+    res.vary('User-Agent');
+    if (isAndroid) {
+      await sendFile(res, next, () => this.service.downloadOriginalForAndroid(auth, id, dto), this.logger);
+      return;
+    }
+    // END custom Android video download change: platform-aware download dispatch is complete.
+
     await sendFile(res, next, () => this.service.downloadOriginal(auth, id, dto), this.logger);
   }
 

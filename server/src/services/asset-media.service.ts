@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { constants } from 'node:fs';
 import sanitize from 'sanitize-filename';
 import { StorageCore } from 'src/cores/storage.core.js';
 import { Asset, AuthSharedLink } from 'src/database.js';
@@ -258,6 +259,32 @@ export class AssetMediaService extends BaseService {
       cacheControl: CacheControl.PrivateWithCache,
     });
   }
+
+  // START custom Android video download change: prefer an existing encoded MP4 after applying original download rules.
+  async downloadOriginalForAndroid(
+    auth: AuthDto,
+    id: string,
+    dto: AssetDownloadOriginalDto,
+  ): Promise<ImmichFileResponse> {
+    const original = await this.downloadOriginal(auth, id, dto);
+    const video = await this.assetRepository.getForVideo(id);
+
+    if (
+      !video?.encodedVideoPath ||
+      original.path !== video.originalPath ||
+      !(await this.storageRepository.checkFileExists(video.encodedVideoPath, constants.R_OK))
+    ) {
+      return original;
+    }
+
+    return new ImmichFileResponse({
+      path: video.encodedVideoPath,
+      fileName: getFileNameWithoutExtension(original.fileName!) + getFilenameExtension(video.encodedVideoPath),
+      contentType: mimeTypes.lookup(video.encodedVideoPath),
+      cacheControl: original.cacheControl,
+    });
+  }
+  // END custom Android video download change: Android downloads safely fall back to the original response.
 
   async viewThumbnail(
     auth: AuthDto,
