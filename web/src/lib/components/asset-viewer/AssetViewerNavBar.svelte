@@ -7,6 +7,8 @@
   import SetVisibilityAction from '#lib/components/asset-viewer/actions/SetVisibilityAction.svelte';
   import type { OnAction, PreAction } from '#lib/components/asset-viewer/actions/action.ts';
   import ButtonContextMenu from '#lib/components/shared-components/context-menu/ButtonContextMenu.svelte';
+  import ComboMenuItems from '#lib/fork/ui/ComboMenuItems.svelte'; // fork
+  import ComboViewport from '#lib/fork/ui/ComboViewport.svelte'; // fork
   import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { authManager } from '#lib/managers/auth-manager.svelte.ts';
   import { languageManager } from '#lib/managers/language-manager.svelte.ts';
@@ -83,6 +85,9 @@
 
 <CommandPaletteDefaultProvider name={$t('assets')} actions={withoutIcons([Close, Cast, ...Object.values(Actions)])} />
 
+<!-- fork -->
+<ComboViewport {asset} />
+
 <div
   class="relative isolate flex h-16 place-items-center justify-between px-3 drop-shadow-[0_0_1px_rgba(0,0,0,0.4)] transition-transform duration-200"
 >
@@ -135,6 +140,8 @@
 
         <ActionMenuItem action={Actions.AddToAlbum} />
         <ActionMenuItem action={Actions.RemoveFromAlbum} />
+        <!-- fork -->
+        <ComboMenuItems {asset} albumId={album?.id ?? null} />
 
         <ActionMenuItem action={StackActions.AddUploads} />
         <ActionMenuItem action={StackActions.Unstack} />

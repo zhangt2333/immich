@@ -29,6 +29,7 @@
     mdiMagnify,
     mdiMap,
     mdiMapOutline,
+    mdiSourceFork,
     mdiTagMultipleOutline,
     mdiToolbox,
     mdiToolboxOutline,
@@ -91,6 +92,9 @@
   {#if authManager.preferences.tags.enabled && authManager.preferences.tags.sidebarWeb}
     <NavbarItem title={$t('tags')} href={Route.tags()} icon={{ icon: mdiTagMultipleOutline, flipped: true }} />
   {/if}
+
+  <!-- fork -->
+  <NavbarItem title={$t('fork_combos_title')} href={Route.forkCombos()} icon={mdiSourceFork} />
 
   {#if authManager.preferences.recentlyAdded.sidebarWeb}
     <NavbarItem

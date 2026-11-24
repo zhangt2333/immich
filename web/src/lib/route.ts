@@ -162,6 +162,8 @@ export const Route = {
 
     return resolved;
   },
+
+  forkCombos: () => '/fork/combos', // fork
 };
 
 export const ExternalRoute = {

@@ -40,3 +40,13 @@ export const handleError: HandleClientError = (error) => {
   console.error(`[hooks.client.ts]:handleError ${result?.message}`, error);
   return result;
 };
+
+// fork
+export const init = async () => {
+  try {
+    const { boot } = await import('#lib/fork/boot.ts');
+    boot();
+  } catch (error) {
+    console.error('[fork] combo actions failed to start', error);
+  }
+};
